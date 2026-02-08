@@ -30,10 +30,12 @@
     .bar-chart {
       display: flex;
       align-items: flex-end;
-      justify-content: space-around;
+      justify-content: flex-start;
       height: 200px;
       padding: 20px;
       gap: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
     }
     .bar-item {
       flex: 1;
@@ -64,6 +66,20 @@
       word-wrap: break-word;
       line-height: 1.2;
     }
+    @media (max-width: 600px) {
+    .bar-chart {
+      gap: 4px;
+      padding: 10px;
+    }
+    .bar-item {
+      min-width: 40px;
+      max-width: 50px;
+    }
+    .bar-label {
+      font-size: 9px;
+      max-width: 50px;
+    }
+  }
   </style>
 </head>
 <body>
