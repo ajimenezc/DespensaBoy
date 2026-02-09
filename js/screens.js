@@ -37,7 +37,7 @@ function renderMain() {
   return `
     <div style="min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px;">
       <div style="max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-        <h1 style="font-size: 32px; font-weight: bold; color: #333; margin-bottom: 30px; text-align: center;">🍽️ Gestor de Raciones</h1>
+        <h1 style="font-size: 32px; font-weight: bold; color: #333; margin-bottom: 30px; text-align: center;">🍽️DespensaBoy</h1>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px;">
           <div style="padding: 20px; border-radius: 15px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
