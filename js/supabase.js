@@ -131,7 +131,15 @@ async function sincronizarDesdeSupabase(codigo) {
     if (remoteTimestamp !== localTimestamp) {
       console.log('📥 Sincronizando datos desde servidor...');
       state.raciones = data.raciones || [];
-      state.racionesHistorico = data.historico || [];
+
+      // Limpiar histórico antes de guardar
+      const historico = data.historico || [];
+      const { limpio, eliminadas } = limpiarHistoricoAutomatico(historico);
+      state.racionesHistorico = limpio;
+
+      if (eliminadas > 0) {
+        console.log(`🧹 ${eliminadas} entradas antiguas eliminadas del histórico descargado`);
+      }
 
       // Actualizar localStorage y timestamp
       saveDataLocal(state.raciones, state.racionesHistorico);
@@ -177,7 +185,11 @@ function suscribirseACambios(codigo) {
         if (remoteTimestamp !== localTimestamp) {
           console.log('📥 Aplicando cambios de otro dispositivo...');
           state.raciones = payload.new.raciones || [];
-          state.racionesHistorico = payload.new.historico || [];
+
+          // Limpiar histórico antes de guardar
+          const historico = payload.new.historico || [];
+          const { limpio } = limpiarHistoricoAutomatico(historico);
+          state.racionesHistorico = limpio;
 
           // Actualizar localStorage y timestamp
           saveDataLocal(state.raciones, state.racionesHistorico);

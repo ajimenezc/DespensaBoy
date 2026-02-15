@@ -19,6 +19,13 @@ function addHistoricoEntry(tipo, racion, cambios = null) {
   }
 
   state.racionesHistorico.unshift(entry); // Añadir al principio para mostrar los más recientes primero
+
+  // Limpieza automática
+  const { limpio, eliminadas } = limpiarHistoricoAutomatico(state.racionesHistorico);
+  if (eliminadas > 0) {
+    state.racionesHistorico = limpio;
+    console.log(`🧹 Limpieza automática: ${eliminadas} entradas antiguas eliminadas`);
+  }
 }
 
 async function goToScreen(screen) {
@@ -250,6 +257,13 @@ async function conectarConCodigoExistente() {
       // Reemplazar con datos del servidor
       state.raciones = data.raciones || [];
       state.racionesHistorico = data.historico || [];
+    }
+
+    // Limpiar histórico automáticamente
+    const { limpio, eliminadas } = limpiarHistoricoAutomatico(state.racionesHistorico);
+    if (eliminadas > 0) {
+      state.racionesHistorico = limpio;
+      console.log(`🧹 ${eliminadas} entradas antiguas eliminadas al conectar`);
     }
 
     // Guardar datos localmente

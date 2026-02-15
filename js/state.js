@@ -24,6 +24,15 @@ function loadData() {
       const data = JSON.parse(stored);
       state.raciones = data.raciones || [];
       state.racionesHistorico = data.racionesHistorico || [];
+
+      // Limpieza automática del histórico al cargar
+      const { limpio, eliminadas } = limpiarHistoricoAutomatico(state.racionesHistorico);
+      if (eliminadas > 0) {
+        state.racionesHistorico = limpio;
+        console.log(`🧹 Limpieza automática al cargar: ${eliminadas} entradas antiguas eliminadas`);
+        // Guardar cambios tras limpieza
+        saveDataLocal(state.raciones, state.racionesHistorico);
+      }
     } catch (e) {
       console.error('Error loading data:', e);
     }

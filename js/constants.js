@@ -16,3 +16,6 @@ const TIPOS_RACIONES = [
 ];
 
 const LOCAL_STORAGE_KEY = 'raciones';
+
+// Configuración de limpieza automática del histórico
+const MAX_ENTRADAS_HISTORICO = 150; // Mantener solo las últimas 150 entradas

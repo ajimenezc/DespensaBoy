@@ -62,3 +62,20 @@ const renderCollapsiblePanel = (config) => {
     </div>
   `;
 };
+
+// Limpieza automática del histórico (mantener solo las últimas N entradas)
+const limpiarHistoricoAutomatico = (historico) => {
+  if (!historico || historico.length === 0) {
+    return { limpio: historico, eliminadas: 0 };
+  }
+
+  const maxEntradas = typeof MAX_ENTRADAS_HISTORICO !== 'undefined' ? MAX_ENTRADAS_HISTORICO : 150;
+
+  if (historico.length > maxEntradas) {
+    const eliminadas = historico.length - maxEntradas;
+    const limpio = historico.slice(0, maxEntradas);
+    return { limpio, eliminadas };
+  }
+
+  return { limpio: historico, eliminadas: 0 };
+};
