@@ -12,6 +12,8 @@ function render() {
     root.innerHTML = renderVer();
   } else if (state.screen === 'historico') {
     root.innerHTML = renderHistorico();
+  } else if (state.screen === 'sincronizacion') {
+    root.innerHTML = renderSincronizacion();
   }
 
   attachEventListeners();
@@ -80,6 +82,10 @@ function renderMain() {
           </button>
           <button onclick="goToScreen('historico')" style="padding: 20px; font-size: 16px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; color: #333; background: linear-gradient(135deg, #e0e0e0 0%, #c0c0c0 100%);">
             📊 Ver histórico
+          </button>
+          <button onclick="goToScreen('sincronizacion')" style="position: relative; padding: 20px; font-size: 16px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; color: white; background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            🔄 Sincronización
+            ${state.syncEnabled ? '<div style="position: absolute; top: 8px; right: 8px; background: #4CAF50; color: white; border-radius: 50%; width: 12px; height: 12px;"></div>' : ''}
           </button>
         </div>
       </div>
@@ -421,6 +427,109 @@ function renderHistorico() {
               `).join('')}
             </div>
           `}
+      </div>
+    </div>
+  `;
+}
+
+function renderSincronizacion() {
+  const isConfigured = typeof isSupabaseConfigured === 'function' && isSupabaseConfigured();
+
+  return `
+    <div style="min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px;">
+      <div style="max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+        <button onclick="goToScreen('main')" style="background: #f0f0f0; border: none; padding: 10px 20px; border-radius: 10px; font-size: 16px; cursor: pointer; margin-bottom: 15px; font-weight: 600; color: #555;">← Volver</button>
+        <h2 style="font-size: 26px; font-weight: bold; color: #333; margin-bottom: 25px; margin-top: 10px;">🔄 Sincronización entre dispositivos</h2>
+
+        ${!isConfigured ? `
+          <div style="padding: 20px; background: #fff4e0; border-left: 4px solid #ff9800; border-radius: 10px; margin-bottom: 25px;">
+            <div style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 10px;">⚠️ Configuración requerida</div>
+            <div style="font-size: 14px; color: #666; line-height: 1.6;">
+              Para habilitar la sincronización, necesitas configurar Supabase:
+              <ol style="margin: 10px 0; padding-left: 20px;">
+                <li>Crea una cuenta gratis en <a href="https://supabase.com" target="_blank" style="color: #667eea;">supabase.com</a></li>
+                <li>Crea un nuevo proyecto</li>
+                <li>Ve a Settings → API</li>
+                <li>Copia la URL y la clave anónima</li>
+                <li>Pégalas en <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">js/supabase.js</code></li>
+                <li>Crea la tabla ejecutando el SQL que te proporcionaré</li>
+              </ol>
+            </div>
+          </div>
+        ` : ''}
+
+        ${state.syncEnabled ? `
+          <!-- Sincronización activa -->
+          <div style="padding: 20px; background: #e8f5e9; border-left: 4px solid #4CAF50; border-radius: 10px; margin-bottom: 25px;">
+            <div style="font-size: 16px; font-weight: 600; color: #2e7d32; margin-bottom: 10px;">✓ Sincronización activa</div>
+            <div style="font-size: 14px; color: #555; margin-bottom: 15px;">Todos tus dispositivos están sincronizados con el código:</div>
+            <div style="padding: 15px; background: white; border-radius: 8px; text-align: center; font-family: monospace; font-size: 20px; font-weight: bold; color: #667eea; margin-bottom: 15px;">
+              ${state.syncCode}
+            </div>
+            <div style="font-size: 13px; color: #666; text-align: center; margin-bottom: 15px;">
+              Comparte este código con tu familia para que vean las mismas raciones
+            </div>
+            <button onclick="copiarCodigo()" style="width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 10px;">
+              📋 Copiar código
+            </button>
+            <button onclick="desactivarSincronizacion()" style="width: 100%; padding: 12px; background: #f44336; color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer;">
+              ✕ Desactivar sincronización
+            </button>
+          </div>
+        ` : `
+          <!-- Sincronización inactiva -->
+          <div style="padding: 20px; background: #f9f9f9; border-radius: 10px; margin-bottom: 25px;">
+            <div style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 15px;">¿Cómo funciona?</div>
+            <div style="font-size: 14px; color: #666; line-height: 1.8; margin-bottom: 20px;">
+              <ul style="margin: 0; padding-left: 20px;">
+                <li style="margin-bottom: 8px;">🔐 Crea un código único o conéctate con uno existente</li>
+                <li style="margin-bottom: 8px;">📱 Todos los dispositivos con el mismo código comparten las raciones</li>
+                <li style="margin-bottom: 8px;">⚡ Los cambios se sincronizan instantáneamente</li>
+                <li style="margin-bottom: 8px;">🌐 Funciona aunque cierres la aplicación</li>
+                <li style="margin-bottom: 8px;">🔒 Tus datos están cifrados y seguros</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="display: grid; gap: 15px;">
+            <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+              <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">🆕 Crear nuevo código</div>
+              <div style="font-size: 14px; opacity: 0.95; margin-bottom: 15px;">
+                Genera un código único para tu familia. Tus datos actuales se subirán automáticamente.
+              </div>
+              <button onclick="crearNuevoCodigo()" ${!isConfigured ? 'disabled' : ''} style="width: 100%; padding: 12px; background: white; color: #667eea; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: ${!isConfigured ? 'not-allowed' : 'pointer'}; opacity: ${!isConfigured ? '0.5' : '1'};">
+                Generar código
+              </button>
+            </div>
+
+            <div style="padding: 20px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 12px; color: white;">
+              <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">🔗 Conectar con código existente</div>
+              <div style="font-size: 14px; opacity: 0.95; margin-bottom: 15px;">
+                ¿Ya tienes un código? Introdúcelo para sincronizar con otros dispositivos.
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <input
+                  id="codigo-input"
+                  type="text"
+                  placeholder="DESPENSA-ABC12345"
+                  ${!isConfigured ? 'disabled' : ''}
+                  style="flex: 1; padding: 12px; border: 2px solid white; border-radius: 8px; font-size: 15px; font-family: monospace; text-transform: uppercase;"
+                  onkeypress="if(event.key==='Enter') conectarConCodigoExistente()"
+                >
+                <button onclick="conectarConCodigoExistente()" ${!isConfigured ? 'disabled' : ''} style="padding: 12px 20px; background: white; color: #4facfe; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: ${!isConfigured ? 'not-allowed' : 'pointer'}; opacity: ${!isConfigured ? '0.5' : '1'};">
+                  Conectar
+                </button>
+              </div>
+            </div>
+          </div>
+        `}
+
+        ${isConfigured ? `
+          <div style="margin-top: 25px; padding: 15px; background: #f0f4ff; border-radius: 10px; text-align: center; font-size: 13px; color: #666;">
+            <div style="margin-bottom: 5px;">💡 <strong>Consejo:</strong> Guarda el código en un lugar seguro</div>
+            <div>Si pierdes todos tus dispositivos, podrás recuperar tus datos con el código</div>
+          </div>
+        ` : ''}
       </div>
     </div>
   `;

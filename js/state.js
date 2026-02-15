@@ -10,6 +10,10 @@ let state = {
   showPopup: false,
   currentTipo: '',
   selectedRacionToEdit: null,
+  // Sincronización
+  syncEnabled: false,
+  syncCode: null,
+  syncChannel: null,
 };
 
 // Cargar datos
@@ -24,6 +28,17 @@ function loadData() {
       console.error('Error loading data:', e);
     }
   }
+
+  // Cargar código de sincronización si existe
+  const syncCode = localStorage.getItem('sync_code');
+  if (syncCode) {
+    state.syncCode = syncCode;
+    state.syncEnabled = true;
+    // Suscribirse a cambios en tiempo real
+    if (typeof suscribirseACambios === 'function') {
+      state.syncChannel = suscribirseACambios(syncCode);
+    }
+  }
 }
 
 // Guardar datos
@@ -31,4 +46,11 @@ function saveData(raciones, racionesHistorico = state.racionesHistorico) {
   localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ raciones, racionesHistorico }));
   state.raciones = raciones;
   state.racionesHistorico = racionesHistorico;
+
+  // Sincronizar con Supabase si está habilitado
+  if (state.syncEnabled && state.syncCode) {
+    sincronizarConSupabase(state.syncCode).catch(err => {
+      console.error('Error sincronizando con Supabase:', err);
+    });
+  }
 }

@@ -188,3 +188,117 @@ function deleteRacion() {
 function attachEventListeners() {
   // Los eventos ya están inline en el HTML
 }
+
+// Handlers de sincronización
+
+async function crearNuevoCodigo() {
+  try {
+    const codigo = await crearDespensaConCodigo();
+
+    // Guardar código en localStorage y estado
+    localStorage.setItem('sync_code', codigo);
+    state.syncCode = codigo;
+    state.syncEnabled = true;
+
+    // Suscribirse a cambios
+    state.syncChannel = suscribirseACambios(codigo);
+
+    render();
+
+    alert(`✓ Código creado exitosamente:\n\n${codigo}\n\n¡Compártelo con tu familia!`);
+  } catch (error) {
+    console.error('Error creando código:', error);
+    alert('Error al crear el código. Revisa la consola para más detalles.');
+  }
+}
+
+async function conectarConCodigoExistente() {
+  const input = document.getElementById('codigo-input');
+  const codigo = input.value.trim().toUpperCase();
+
+  if (!codigo) {
+    alert('Por favor introduce un código');
+    return;
+  }
+
+  try {
+    const data = await conectarConCodigo(codigo);
+
+    // Preguntar si quiere mezclar datos o reemplazar
+    const mezclar = confirm(
+      '¿Quieres mantener tus datos locales y mezclarlos con los del servidor?\n\n' +
+      'Sí = Mantener ambos\n' +
+      'No = Usar solo datos del servidor'
+    );
+
+    if (mezclar) {
+      // Mezclar datos (evitar duplicados por ID)
+      const idsExistentes = new Set(state.raciones.map(r => r.id));
+      const racionesNuevas = (data.raciones || []).filter(r => !idsExistentes.has(r.id));
+      state.raciones = [...state.raciones, ...racionesNuevas];
+
+      const idsHistoricoExistentes = new Set(state.racionesHistorico.map(h => h.id));
+      const historicoNuevo = (data.historico || []).filter(h => !idsHistoricoExistentes.has(h.id));
+      state.racionesHistorico = [...state.racionesHistorico, ...historicoNuevo];
+    } else {
+      // Reemplazar con datos del servidor
+      state.raciones = data.raciones || [];
+      state.racionesHistorico = data.historico || [];
+    }
+
+    // Guardar datos localmente
+    saveDataLocal(state.raciones, state.racionesHistorico);
+
+    // Guardar código
+    localStorage.setItem('sync_code', codigo);
+    state.syncCode = codigo;
+    state.syncEnabled = true;
+
+    // Suscribirse a cambios
+    state.syncChannel = suscribirseACambios(codigo);
+
+    // Sincronizar por si mezclamos datos
+    if (mezclar) {
+      await sincronizarConSupabase(codigo);
+    }
+
+    render();
+
+    alert('✓ Conectado exitosamente!\n\nTus dispositivos están ahora sincronizados.');
+  } catch (error) {
+    console.error('Error conectando:', error);
+    alert('Código no encontrado. Verifica que sea correcto.');
+  }
+}
+
+function copiarCodigo() {
+  if (!state.syncCode) return;
+
+  navigator.clipboard.writeText(state.syncCode).then(() => {
+    alert('✓ Código copiado al portapapeles:\n\n' + state.syncCode);
+  }).catch(() => {
+    // Fallback si no funciona clipboard API
+    prompt('Copia este código:', state.syncCode);
+  });
+}
+
+function desactivarSincronizacion() {
+  if (!confirm('¿Estás seguro de que quieres desactivar la sincronización?\n\nTus datos locales se mantendrán, pero dejarán de sincronizarse con otros dispositivos.')) {
+    return;
+  }
+
+  // Desuscribirse de cambios
+  if (state.syncChannel) {
+    desuscribirseACambios(state.syncChannel);
+  }
+
+  // Limpiar estado
+  localStorage.removeItem('sync_code');
+  state.syncCode = null;
+  state.syncEnabled = false;
+  state.syncChannel = null;
+
+  render();
+
+  alert('Sincronización desactivada.\n\nPuedes reactivarla cuando quieras con el mismo código.');
+}
