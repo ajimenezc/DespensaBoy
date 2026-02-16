@@ -5,6 +5,9 @@
 const SUPABASE_URL = 'https://nbwupfaryhheigvvbxyj.supabase.co'; // Ej: https://abcdefghijklmnop.supabase.co
 const SUPABASE_ANON_KEY = 'sb_publishable_RDi-ZBfJdDcXPmb3mTwrcQ_ivQZsTD0'; // Tu clave anónima pública
 
+// Cloudflare Turnstile Site Key (pública, obtén de https://dash.cloudflare.com)
+const TURNSTILE_SITE_KEY = '0x4AAAAAACdWgEGwJTD3TpYV';
+
 // Cliente de Supabase (se inicializa cuando se carga el SDK)
 let supabaseClient = null;
 
@@ -32,30 +35,67 @@ function generarCodigoFamiliar() {
   return codigo;
 }
 
-// Crear nueva despensa con código
+// Obtener token de Turnstile
+async function obtenerTokenTurnstile() {
+  return new Promise((resolve, reject) => {
+    if (typeof turnstile === 'undefined') {
+      reject(new Error('Turnstile no está cargado'));
+      return;
+    }
+
+    // Crear contenedor temporal para el widget
+    const container = document.createElement('div');
+    container.id = 'turnstile-widget-' + Date.now();
+    document.body.appendChild(container);
+
+    turnstile.render(container, {
+      sitekey: TURNSTILE_SITE_KEY,
+      callback: (token) => {
+        document.body.removeChild(container);
+        resolve(token);
+      },
+      'error-callback': () => {
+        document.body.removeChild(container);
+        reject(new Error('Error al verificar CAPTCHA'));
+      },
+    });
+  });
+}
+
+// Crear nueva despensa con código (CON TURNSTILE)
 async function crearDespensaConCodigo() {
-  if (!initSupabase()) {
-    throw new Error('Supabase no está disponible');
-  }
+  try {
+    // 1. Obtener token de Turnstile
+    const captchaToken = await obtenerTokenTurnstile();
 
-  const codigo = generarCodigoFamiliar();
+    // 2. Llamar a Edge Function
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/crear-despensa`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          captchaToken,
+          raciones: state.raciones,
+          historico: state.racionesHistorico,
+        }),
+      }
+    );
 
-  const { data, error } = await supabaseClient
-    .from('despensas')
-    .insert({
-      codigo: codigo,
-      raciones: state.raciones,
-      historico: state.racionesHistorico,
-    })
-    .select()
-    .single();
+    const result = await response.json();
 
-  if (error) {
+    if (!response.ok) {
+      throw new Error(result.error || 'Error al crear despensa');
+    }
+
+    return result.codigo;
+  } catch (error) {
     console.error('Error creando despensa:', error);
     throw error;
   }
-
-  return codigo;
 }
 
 // Conectar con código existente
@@ -78,32 +118,46 @@ async function conectarConCodigo(codigo) {
   return data;
 }
 
-// Sincronizar datos locales CON Supabase (SUBIR datos)
+// Sincronizar datos locales CON Supabase (SUBIR datos) - CON TURNSTILE
 async function sincronizarConSupabase(codigo) {
-  if (!initSupabase()) {
-    return false;
-  }
+  try {
+    // 1. Obtener token de Turnstile
+    const captchaToken = await obtenerTokenTurnstile();
 
-  const timestamp = new Date().toISOString();
+    // 2. Llamar a Edge Function
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/actualizar-despensa`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
+          captchaToken,
+          codigo,
+          raciones: state.raciones,
+          historico: state.racionesHistorico,
+        }),
+      }
+    );
 
-  const { error } = await supabaseClient
-    .from('despensas')
-    .update({
-      raciones: state.raciones,
-      historico: state.racionesHistorico,
-      updated_at: timestamp,
-    })
-    .eq('codigo', codigo);
+    const result = await response.json();
 
-  if (error) {
+    if (!response.ok) {
+      console.error('Error sincronizando:', result.error);
+      return false;
+    }
+
+    // Guardar timestamp local para evitar loops
+    const timestamp = result.data.updated_at;
+    localStorage.setItem('last_update_timestamp', timestamp);
+
+    return true;
+  } catch (error) {
     console.error('Error sincronizando:', error);
     return false;
   }
-
-  // Guardar timestamp local para evitar loops
-  localStorage.setItem('last_update_timestamp', timestamp);
-
-  return true;
 }
 
 // Sincronizar datos DESDE Supabase (DESCARGAR datos)

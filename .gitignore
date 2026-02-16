@@ -1,0 +1,22 @@
+# Supabase
+.supabase/
+supabase/.temp
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env files (si usas archivos .env en el futuro)
+.env
+.env.local
+.env.*.local
